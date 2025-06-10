@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from blog.models import Category, Topic, Post, Bookmark
+from django.db.models import F
 from datetime import timedelta
 from django.utils import timezone
 
@@ -45,21 +46,41 @@ class TopicSerializer(serializers.ModelSerializer):
 
 
 
+from django.db.models import F
+from rest_framework import serializers
+from .models import Post, Category, Topic
+from .serializers import PostListSerializer, CategorySerializer, TopicSerializer
 
 class PostDetailSerializer(serializers.ModelSerializer):
     author = serializers.StringRelatedField()
     category = CategorySerializer()
     topics = TopicSerializer(many=True)
+    related_posts = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
         fields = [
             'id', 'title', 'slug', 'content', 'excerpt', 'reading_time',
             'meta_title', 'meta_description', 'published_at',
-            'author', 'category', 'topics',
+            'author', 'category', 'topics', 'related_posts',  # Added related_posts
             'status', 'is_published', 'created_at', 'updated_at',
         ]
-        read_only_fields = fields 
+        read_only_fields = fields
+
+    def get_related_posts(self, obj):
+        related = getattr(obj.category, 'posts', None)
+        if related is None:
+            related = Post.objects.filter(
+                category=obj.category,
+                status='published',
+                is_published=True,
+                topics__in=obj.topics.all()
+            ).exclude(id=obj.id).select_related('author', 'category').order_by(
+                F('published_at').desc(nulls_last=True)
+            ).distinct()
+        else:
+            related = related.exclude(id=obj.id)
+        return PostListSerializer(related[:5], many=True).data
 
 
 

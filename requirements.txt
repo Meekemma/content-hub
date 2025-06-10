@@ -25,9 +25,11 @@ packaging==24.2
 pillow==11.1.0
 pluggy==1.6.0
 psycopg==3.2.6
+psycopg2-binary==2.9.10
 Pygments==2.19.1
 PyJWT==2.9.0
 pytest==8.4.0
+pytest-django==4.11.1
 python-decouple==3.8
 python-dotenv==1.0.1
 redis==5.2.1

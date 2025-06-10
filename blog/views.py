@@ -8,6 +8,7 @@ from rest_framework import status
 from django.db.models import Count
 from .models import *
 from .serializers import PostListSerializer,PostDetailSerializer, BookmarkSerializer
+from django.db.models import F, Prefetch
 from django.shortcuts import get_object_or_404
 from .filters import PostFilter
 # Create your views here.
@@ -37,7 +38,20 @@ def posts_list(request):
 
 @api_view(['GET'])
 def post_detail(request, slug):
-    post = get_object_or_404(Post.objects.select_related('author', 'category').prefetch_related('topics'), slug=slug, is_published=True)
+    post = get_object_or_404(
+        Post.objects.select_related('author', 'category').prefetch_related(
+            'topics',
+            Prefetch(
+                'category__posts',
+                queryset=Post.objects.filter(status='published', is_published=True)
+                             .select_related('author', 'category')
+                             .prefetch_related('topics')
+                             .order_by(F('published_at').desc(nulls_last=True))
+            )
+        ),
+        slug=slug,
+        is_published=True
+    )
     serializer = PostDetailSerializer(post)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
